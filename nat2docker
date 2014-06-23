@@ -1,0 +1,54 @@
+#!/bin/bash
+
+NAME="$(basename "$(test -L "$0" && readlink "$0" || echo "$0")")"
+VM_NAME=boot2docker-vm
+BEGIN_PORT=49000
+END_PORT=49900
+
+start_boot2docker(){
+  echo "Start boot2docker"
+  boot2docker start
+}
+
+stop_boot2docker(){
+  echo "Stop boot2docker"
+  boot2docker stop
+}
+
+do_add(){
+  stop_boot2docker
+
+  echo "Add ports forwarding - $BEGIN_PORT..$END_PORT - from host to $VM_NAME"
+
+  for i in `seq $BEGIN_PORT $END_PORT`; do
+   VBoxManage modifyvm "$VM_NAME" --natpf1 "tcp-port$i,tcp,,$i,,$i";
+   VBoxManage modifyvm "$VM_NAME" --natpf1 "udp-port$i,udp,,$i,,$i";
+  done
+
+  start_boot2docker
+}
+
+do_remove(){
+  stop_boot2docker
+
+  echo "Remove ports forwarding - $BEGIN_PORT..$END_PORT - from host to $VM_NAME"
+
+  for i in `seq $BEGIN_PORT $END_PORT`; do
+   VBoxManage modifyvm "$VM_NAME" --natpf1 delete "tcp-port$i";
+   VBoxManage modifyvm "$VM_NAME" --natpf1 delete "udp-port$i";
+  done
+
+  start_boot2docker
+}
+
+case "$1" in
+  add)
+  do_add
+  ;;
+  remove)
+  do_remove
+  ;;
+  *)
+  echo "Usage: $NAME {add|remove}" >&2
+  ;;
+esac
